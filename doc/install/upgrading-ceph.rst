@@ -537,6 +537,101 @@ Upgrade daemons in the following order:
    ``radosgw``.
 
 
+Jewel or Kraken to Luminous
+===========================
+
+#. Ensure that the sortbitwise flag is enabled::
+
+       ceph osd set sortbitwise
+
+#. Make sure your cluster is stable and healthy (no down or
+   recoverying OSDs). (Optional, but recommended.)
+
+#. Do not create any new erasure-code pools while upgrading the monitors.
+
+#. You can monitor the progress of your upgrade at each stage with the
+   ``ceph versions`` command, which will tell you what ceph version is
+   running for each type of daemon.
+
+#. Set the ``noout`` flag for the duration of the upgrade. (Optional
+   but recommended.)::
+
+       ceph osd set noout
+
+#. Upgrade monitors by installing the new packages and restarting the
+   monitor daemons. Note that, unlike prior releases, the ceph-mon
+   daemons must be upgraded first::
+
+       systemctl restart ceph-mon.target
+
+   Verify the monitor upgrade is complete once all monitors are up by
+   looking for the luminous feature string in the mon map. For
+   example::
+
+       ceph mon feature ls
+
+   should include luminous under persistent features::
+
+       on current monmap (epoch NNN)
+          persistent: [kraken,luminous]
+          required: [kraken,luminous]
+
+#. Add or restart ceph-mgr daemons. If you are upgrading from
+   kraken, upgrade packages and restart ceph-mgr daemons with::
+
+       systemctl restart ceph-mgr.target
+
+   If you are upgrading from kraken, you may already have ceph-mgr
+   daemons deployed. If not, or if you are upgrading from jewel, you
+   can deploy new daemons with tools like ceph-deploy or ceph-ansible.
+   For example::
+
+       ceph-deploy mgr create HOST
+
+   Verify the ceph-mgr daemons are running by checking ceph -s::
+
+       ceph -s
+
+       ...
+         services:
+          mon: 3 daemons, quorum foo,bar,baz
+          mgr: foo(active), standbys: bar, baz
+       ...
+
+#. Upgrade all OSDs by installing the new packages and restarting the
+   ceph-osd daemons on all hosts::
+
+       systemctl restart ceph-osd.target
+
+   You can monitor the progress of the OSD upgrades with the new
+   ceph versions or ceph osd versions command::
+
+       ceph osd versions
+       {
+          "ceph version 12.2.0 (...) luminous (stable)": 12,
+          "ceph version 10.2.6 (...)": 3,
+       }
+
+#. Upgrade all CephFS daemons by upgrading packages and restarting
+   daemons on all hosts::
+
+       systemctl restart ceph-mds.target
+
+#. Upgrade all radosgw daemons by upgrading packages and restarting
+   daemons on all hosts::
+
+       systemctl restart radosgw.target
+
+#. Complete the upgrade by disallowing pre-luminous OSDs::
+
+       ceph osd require-osd-release luminous
+
+   If you set noout at the beginning, be sure to clear it with::
+
+       ceph osd unset noout
+
+#. Verify the cluster is healthy with ``ceph health``.
+
 Upgrade Procedures
 ==================
 
